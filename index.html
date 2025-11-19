@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UD6 - Gestione Interferenze in Cantiere</title>
+    <title>UD6 - Gestione Interferenze PSC</title>
     <style>
         * {
             margin: 0;
@@ -168,48 +168,51 @@
         }
 
         .cell.work-cell {
-            cursor: pointer;
-            transition: all 0.2s;
             position: relative;
-        }
-
-        .cell.work-cell:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 10;
-        }
-
-        .cell.work-cell.clickable {
-            border: 2px dashed #f6ad55;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-
-        .cell.work-cell.clicked {
-            border: 3px solid #48bb78;
-            box-shadow: 0 0 0 3px rgba(72, 187, 120, 0.2);
-        }
-
-        .cell.work-cell.wrong {
-            border: 3px solid #f56565;
-            box-shadow: 0 0 0 3px rgba(245, 101, 101, 0.2);
-            animation: shake 0.5s;
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
         }
 
         .company-a { background: #fc8181; }
         .company-b { background: #63b3ed; }
         .company-c { background: #68d391; }
         .company-d { background: #f6ad55; }
+
+        .cell.interference {
+            border: 3px solid #f6ad55;
+            box-shadow: 0 0 0 4px rgba(246, 173, 85, 0.3);
+            cursor: pointer;
+            transition: all 0.2s;
+            animation: pulse-border 2s infinite;
+        }
+
+        @keyframes pulse-border {
+            0%, 100% { box-shadow: 0 0 0 4px rgba(246, 173, 85, 0.3); }
+            50% { box-shadow: 0 0 0 4px rgba(246, 173, 85, 0.6); }
+        }
+
+        .cell.interference:hover {
+            transform: scale(1.1);
+            z-index: 10;
+        }
+
+        .cell.interference.answered {
+            border-color: #48bb78;
+            box-shadow: 0 0 0 4px rgba(72, 187, 120, 0.3);
+            animation: none;
+        }
+
+        .cell.interference::after {
+            content: '⚠️';
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 16px;
+        }
+
+        .cell.interference.answered::after {
+            content: '✓';
+            color: #48bb78;
+            font-weight: bold;
+        }
 
         .modal {
             display: none;
@@ -232,9 +235,11 @@
             background: white;
             border-radius: 12px;
             padding: 30px;
-            max-width: 500px;
+            max-width: 600px;
             width: 90%;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-height: 80vh;
+            overflow-y: auto;
         }
 
         .modal-content h3 {
@@ -243,10 +248,29 @@
             font-size: 22px;
         }
 
-        .modal-content p {
-            color: #4a5568;
+        .interference-details {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 8px;
             margin-bottom: 20px;
+            border-left: 4px solid #f6ad55;
+        }
+
+        .interference-details p {
+            color: #4a5568;
+            margin-bottom: 8px;
             line-height: 1.6;
+        }
+
+        .interference-details strong {
+            color: #2d3748;
+        }
+
+        .modal-content .question {
+            color: #2d3748;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
         }
 
         .options {
@@ -272,6 +296,39 @@
             border-color: #4299e1;
             background: #ebf8ff;
             transform: translateX(5px);
+        }
+
+        .option-btn.correct {
+            background: #c6f6d5;
+            border-color: #48bb78;
+        }
+
+        .option-btn.wrong {
+            background: #fed7d7;
+            border-color: #f56565;
+        }
+
+        .feedback {
+            display: none;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .feedback.active {
+            display: block;
+        }
+
+        .feedback.correct {
+            background: #c6f6d5;
+            color: #22543d;
+            border-left: 4px solid #48bb78;
+        }
+
+        .feedback.wrong {
+            background: #fed7d7;
+            color: #742a2a;
+            border-left: 4px solid #f56565;
         }
 
         .btn-primary {
@@ -317,34 +374,6 @@
             font-size: 22px;
         }
 
-        .result-item {
-            background: white;
-            padding: 15px;
-            margin-bottom: 12px;
-            border-radius: 6px;
-            border-left: 4px solid #cbd5e0;
-        }
-
-        .result-item.found {
-            border-left-color: #48bb78;
-        }
-
-        .result-item.missed {
-            border-left-color: #f56565;
-        }
-
-        .result-title {
-            font-weight: 600;
-            color: #2d3748;
-            margin-bottom: 5px;
-        }
-
-        .result-desc {
-            color: #718096;
-            font-size: 14px;
-            line-height: 1.5;
-        }
-
         .final-score {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -364,55 +393,94 @@
             opacity: 0.9;
         }
 
+        .result-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 6px;
+            border-left: 4px solid #cbd5e0;
+        }
+
+        .result-item.correct {
+            border-left-color: #48bb78;
+        }
+
+        .result-item.incorrect {
+            border-left-color: #f56565;
+        }
+
+        .result-title {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+
+        .result-desc {
+            color: #718096;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
         .verify-btn-container {
             text-align: center;
             margin-top: 30px;
+        }
+
+        .note {
+            background: #ebf8ff;
+            border-left: 4px solid #4299e1;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #2c5282;
+            line-height: 1.6;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🏗️ UD6 - Gestione Interferenze in Cantiere</h1>
-            <p>Identifica le sovrapposizioni pericolose tra le lavorazioni delle 4 imprese</p>
+            <h1>🏗️ UD6 - Gestione Interferenze nel PSC</h1>
+            <p>Per ogni interferenza evidenziata, rispondi alle domande o scegli le misure di coordinamento</p>
         </div>
 
         <div class="content">
             <div class="instructions">
                 <h3>📋 Istruzioni</h3>
-                <p><strong>Scenario:</strong> Cantiere di ristrutturazione con 4 imprese che lavorano contemporaneamente.</p>
-                <p><strong>Obiettivo:</strong> Clicca sulle celle dove vedi sovrapposizioni tra lavorazioni che possono creare interferenze pericolose.</p>
-                <p><strong>Quando clicchi su una cella:</strong> dovrai rispondere perché quella è un'interferenza da gestire.</p>
-                <p><strong>Target minimo:</strong> Trova almeno 4 interferenze su 6 totali presenti nel cronoprogramma.</p>
+                <p><strong>Scenario:</strong> Cantiere di ristrutturazione con 4 imprese che lavorano contemporaneamente in zone diverse.</p>
+                <p><strong>Obiettivo:</strong> Nel cronoprogramma sono evidenziate 5 interferenze critiche (celle con bordo arancione ⚠️)</p>
+                <p><strong>Compito:</strong> Clicca su ogni interferenza evidenziata e rispondi alle domande per gestirla correttamente.</p>
+                <p><strong>Domande:</strong> Alternano tra "Qual è il motivo dell'interferenza?" e "Quale misura di coordinamento adotti?"</p>
             </div>
 
             <div class="score-panel">
                 <div class="score-item">
-                    <div class="score-label">Interferenze trovate</div>
-                    <div class="score-value" id="foundCount">0 / 6</div>
+                    <div class="score-label">Risposte corrette</div>
+                    <div class="score-value" id="correctCount">0 / 5</div>
                 </div>
                 <div class="score-item">
-                    <div class="score-label">Click totali</div>
-                    <div class="score-value" id="clickCount">0</div>
+                    <div class="score-label">Punteggio</div>
+                    <div class="score-value" id="score">0</div>
                 </div>
             </div>
 
             <div class="legend">
                 <div class="legend-item">
                     <div class="legend-color company-a"></div>
-                    <div class="legend-text">Impresa A - Demolizioni interne</div>
+                    <div class="legend-text">Impresa A - Demolizioni (Piano 2)</div>
                 </div>
                 <div class="legend-item">
                     <div class="legend-color company-b"></div>
-                    <div class="legend-text">Impresa B - Impianto elettrico</div>
+                    <div class="legend-text">Impresa B - Impianto elettrico (Piano 1)</div>
                 </div>
                 <div class="legend-item">
                     <div class="legend-color company-c"></div>
-                    <div class="legend-text">Impresa C - Opere murarie</div>
+                    <div class="legend-text">Impresa C - Opere murarie (Piano 1)</div>
                 </div>
                 <div class="legend-item">
                     <div class="legend-color company-d"></div>
-                    <div class="legend-text">Impresa D - Ponteggio esterno</div>
+                    <div class="legend-text">Impresa D - Ponteggio (Esterno)</div>
                 </div>
             </div>
 
@@ -421,7 +489,7 @@
             </div>
 
             <div class="verify-btn-container">
-                <button class="btn-primary" id="verifyBtn">Verifica Risultati</button>
+                <button class="btn-primary" id="verifyBtn">Visualizza Risultati Finali</button>
             </div>
 
             <div class="results" id="results"></div>
@@ -431,66 +499,113 @@
     <!-- Modal per domande -->
     <div class="modal" id="questionModal">
         <div class="modal-content">
-            <h3>Perché questa è un'interferenza?</h3>
-            <p id="modalQuestion"></p>
+            <h3 id="modalTitle">Interferenza Rilevata</h3>
+            <div class="interference-details" id="interferenceDetails"></div>
+            <div class="question" id="modalQuestion"></div>
             <div class="options" id="modalOptions"></div>
+            <div class="feedback" id="feedback"></div>
+            <button class="btn-primary" id="nextBtn" style="display: none;">Continua</button>
         </div>
     </div>
 
     <script>
-        // Dati del cronoprogramma (20 giorni = 4 settimane)
+        // Dati del cronoprogramma
         const companies = [
-            { id: 'A', name: 'Impresa A - Demolizioni', days: [1,2,3,4,5,6,7,8,9,10], color: 'company-a' },
-            { id: 'B', name: 'Impresa B - Elettrico', days: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], color: 'company-b' },
-            { id: 'C', name: 'Impresa C - Murarie', days: [5,6,7,8,9,10,11,12,13,14], color: 'company-c' },
-            { id: 'D', name: 'Impresa D - Ponteggio', days: [1,2,3,16,17,18,19,20], color: 'company-d' }
+            { id: 'A', name: 'Impresa A - Demolizioni (Piano 2)', days: [1,2,3,4,5,6,7,8,9,10], color: 'company-a' },
+            { id: 'B', name: 'Impresa B - Elettrico (Piano 1)', days: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], color: 'company-b' },
+            { id: 'C', name: 'Impresa C - Murarie (Piano 1)', days: [5,6,7,8,9,10,11,12,13,14], color: 'company-c' },
+            { id: 'D', name: 'Impresa D - Ponteggio (Esterno)', days: [1,2,3,16,17,18,19,20], color: 'company-d' }
         ];
 
-        // Interferenze corrette (giorni dove c'è sovrapposizione pericolosa)
-        const correctInterferences = [
-            { 
-                day: 3, 
-                companies: ['A', 'B'], 
-                reason: 'Demolizioni sopra lavori elettrici - rischio caduta materiali',
-                correctAnswer: 'caduta'
+        // 5 interferenze con domande alternate
+        const interferences = [
+            {
+                id: 1,
+                day: 3,
+                companies: ['A', 'B'],
+                context: 'Impresa A demolisce al Piano 2, mentre Impresa B installa impianto elettrico al Piano 1 sottostante',
+                type: 'reason', // domanda sul motivo
+                question: 'Qual è il principale rischio di questa interferenza?',
+                options: [
+                    { text: 'Rischio caduta materiali dall\'alto sul personale sottostante', correct: true },
+                    { text: 'Interferenza solo logistica negli accessi', correct: false },
+                    { text: 'Rumore eccessivo che disturba i lavori', correct: false },
+                    { text: 'Nessun rischio reale, sono su piani diversi', correct: false }
+                ],
+                correctFeedback: 'Corretto! Le demolizioni sopra lavori elettrici creano grave rischio caduta materiali. Art. 96 D.Lgs. 81/2008.',
+                wrongFeedback: 'Errato. Il rischio principale è la caduta di materiali pesanti dall\'alto che può colpire gli elettricisti al piano inferiore.'
             },
-            { 
-                day: 2, 
-                companies: ['A', 'D'], 
-                reason: 'Demolizioni con ponteggio in uso - lavori in quota sovrapposti',
-                correctAnswer: 'stessaZona'
+            {
+                id: 2,
+                day: 2,
+                companies: ['A', 'D'],
+                context: 'Impresa A demolisce Piano 2, mentre Impresa D monta il ponteggio esterno',
+                type: 'solution', // domanda sulla soluzione
+                question: 'Quale misura di coordinamento è più efficace?',
+                options: [
+                    { text: 'Separazione temporale: montaggio ponteggio solo quando demolizioni sono completate', correct: false },
+                    { text: 'Delimitazione area con teli di protezione sul ponteggio + orari sfalsati', correct: true },
+                    { text: 'Nessuna misura: il ponteggio è esterno, non c\'è interferenza', correct: false },
+                    { text: 'Sospendere entrambe le attività fino a soluzione definitiva', correct: false }
+                ],
+                correctFeedback: 'Esatto! Protezione fisica + coordinamento temporale secondo art. 95 e 97 D.Lgs. 81/2008.',
+                wrongFeedback: 'No. Serve protezione fisica (teli) + coordinamento orari per evitare caduta detriti su ponteggiatori.'
             },
-            { 
-                day: 7, 
-                companies: ['B', 'C'], 
-                reason: 'Lavori elettrici e murari nella stessa area - rischio polveri su impianti',
-                correctAnswer: 'stessaZona'
+            {
+                id: 3,
+                day: 7,
+                companies: ['B', 'C'],
+                context: 'Impresa B (elettrico) e Impresa C (murarie) lavorano entrambe al Piano 1 nella stessa area',
+                type: 'reason', // motivo
+                question: 'Perché questa è un\'interferenza da gestire?',
+                options: [
+                    { text: 'Solo questione di spazio: basta organizzare meglio', correct: false },
+                    { text: 'Rischio polveri da murature su impianti elettrici + sovrapposizione spaziale', correct: true },
+                    { text: 'Incompatibilità personale tra i capicantiere', correct: false },
+                    { text: 'Non è un\'interferenza: possono lavorare insieme', correct: false }
+                ],
+                correctFeedback: 'Corretto! Polveri su impianti elettrici + interferenza fisica richiedono coordinamento (art. 26 D.Lgs. 81/2008).',
+                wrongFeedback: 'Sbagliato. Le polveri da muratura danneggiano gli impianti elettrici e c\'è conflitto nell\'uso dello spazio.'
             },
-            { 
-                day: 9, 
-                companies: ['A', 'C'], 
-                reason: 'Demolizioni e murature contemporanee - interferenza su accessi',
-                correctAnswer: 'stessaZona'
+            {
+                id: 4,
+                day: 9,
+                companies: ['A', 'C'],
+                context: 'Impresa A termina demolizioni Piano 2, Impresa C lavora alle murature Piano 1',
+                type: 'solution', // soluzione
+                question: 'Come coordini queste due attività sovrapposte?',
+                options: [
+                    { text: 'Nessun coordinamento: sono su piani diversi quindi sicure', correct: false },
+                    { text: 'Coordinamento accessi + verifica stabilità strutturale prima murature', correct: true },
+                    { text: 'Sospendere le murature fino al termine totale demolizioni', correct: false },
+                    { text: 'Barriere fisiche tra i due piani', correct: false }
+                ],
+                correctFeedback: 'Esatto! Serve coordinare accessi e verificare che le demolizioni non compromettano la stabilità per le murature.',
+                wrongFeedback: 'No. Le demolizioni possono aver indebolito strutture: serve verifica prima di caricare con murature.'
             },
-            { 
-                day: 10, 
-                companies: ['B', 'C'], 
-                reason: 'Elettrico e murarie - sovrapposizione spaziale critica',
-                correctAnswer: 'stessaZona'
-            },
-            { 
-                day: 6, 
-                companies: ['A', 'B', 'C'], 
-                reason: 'Tre imprese contemporanee - alta complessità coordinamento',
-                correctAnswer: 'stessaZona'
+            {
+                id: 5,
+                day: 10,
+                companies: ['B', 'C'],
+                context: 'Impresa B (elettrico) e C (murarie) ancora sovrapposte al Piano 1 - fase critica finale',
+                type: 'solution', // soluzione
+                question: 'Misura prioritaria per questa fase critica?',
+                options: [
+                    { text: 'Riunione di coordinamento quotidiana + separazione oraria 4h ciascuno', correct: true },
+                    { text: 'Continuare senza modifiche: ormai si conoscono', correct: false },
+                    { text: 'Far lavorare una sola impresa per volta', correct: false },
+                    { text: 'Richiedere al committente di modificare il PSC', correct: false }
+                ],
+                correctFeedback: 'Perfetto! Coordinamento quotidiano + turnazione oraria (art. 92 e 97 D.Lgs. 81/2008).',
+                wrongFeedback: 'Errato. Nelle fasi critiche serve coordinamento quotidiano formale con separazione temporale rigida.'
             }
         ];
 
-        let foundInterferences = new Set();
-        let clickCount = 0;
-        let currentCell = null;
+        let answeredInterferences = {};
+        let correctAnswers = 0;
+        let currentInterference = null;
 
-        // Genera la griglia del cronoprogramma
+        // Genera la griglia
         function generateTimeline() {
             const grid = document.getElementById('timelineGrid');
             
@@ -506,162 +621,173 @@
                 
                 for (let day = 1; day <= 20; day++) {
                     const isWorkDay = company.days.includes(day);
-                    const hasInterference = correctInterferences.some(
+                    const interference = interferences.find(
                         int => int.day === day && int.companies.includes(company.id)
                     );
                     
                     if (isWorkDay) {
-                        const classes = `cell work-cell ${company.color} ${hasInterference ? 'clickable' : ''}`;
-                        const cellId = `cell-${company.id}-${day}`;
-                        grid.innerHTML += `<div class="${classes}" data-company="${company.id}" data-day="${day}" id="${cellId}"></div>`;
+                        let classes = `cell work-cell ${company.color}`;
+                        let cellId = `cell-${company.id}-${day}`;
+                        
+                        if (interference) {
+                            classes += ' interference';
+                            grid.innerHTML += `<div class="${classes}" data-interference="${interference.id}" id="${cellId}"></div>`;
+                        } else {
+                            grid.innerHTML += `<div class="${classes}" id="${cellId}"></div>`;
+                        }
                     } else {
                         grid.innerHTML += `<div class="cell"></div>`;
                     }
                 }
             });
 
-            // Aggiungi event listeners
-            document.querySelectorAll('.work-cell').forEach(cell => {
-                cell.addEventListener('click', handleCellClick);
+            // Event listeners sulle interferenze
+            document.querySelectorAll('.interference').forEach(cell => {
+                cell.addEventListener('click', handleInterferenceClick);
             });
         }
 
-        function handleCellClick(e) {
-            const cell = e.target;
-            const day = parseInt(cell.dataset.day);
-            const company = cell.dataset.company;
-
-            // Verifica se è un'interferenza corretta
-            const interference = correctInterferences.find(
-                int => int.day === day && int.companies.includes(company)
-            );
-
-            if (!interference) {
-                // Click sbagliato
-                cell.classList.add('wrong');
-                setTimeout(() => cell.classList.remove('wrong'), 500);
-                return;
-            }
-
-            // Se già trovata, non fare nulla
-            if (foundInterferences.has(day)) {
-                return;
-            }
-
-            // Mostra modal con domanda
-            currentCell = { day, interference, cells: [] };
+        function handleInterferenceClick(e) {
+            const interferenceId = parseInt(e.target.dataset.interference);
             
-            // Trova tutte le celle di questa interferenza
-            interference.companies.forEach(comp => {
-                const cellEl = document.getElementById(`cell-${comp}-${day}`);
-                if (cellEl) currentCell.cells.push(cellEl);
-            });
+            // Se già risposta, non fare nulla
+            if (answeredInterferences[interferenceId]) {
+                return;
+            }
 
-            showQuestionModal(interference);
-            clickCount++;
-            updateScore();
+            const interference = interferences.find(i => i.id === interferenceId);
+            showInterferenceModal(interference);
         }
 
-        function showQuestionModal(interference) {
+        function showInterferenceModal(interference) {
+            currentInterference = interference;
+            
             const modal = document.getElementById('questionModal');
+            const title = document.getElementById('modalTitle');
+            const details = document.getElementById('interferenceDetails');
             const question = document.getElementById('modalQuestion');
             const optionsDiv = document.getElementById('modalOptions');
+            const feedback = document.getElementById('feedback');
+            const nextBtn = document.getElementById('nextBtn');
 
-            question.textContent = `Giorno ${interference.day}: ${interference.companies.join(' + ')}`;
+            title.textContent = `Interferenza ${interference.id} - Giorno ${interference.day}`;
+            
+            details.innerHTML = `
+                <p><strong>Imprese coinvolte:</strong> ${interference.companies.join(' + ')}</p>
+                <p><strong>Contesto:</strong> ${interference.context}</p>
+            `;
 
-            const options = [
-                { id: 'stessaZona', text: 'Stessa zona di lavoro, stesso momento temporale', correct: interference.correctAnswer === 'stessaZona' },
-                { id: 'caduta', text: 'Rischio caduta materiali dall\'alto', correct: interference.correctAnswer === 'caduta' },
-                { id: 'logistica', text: 'Solo questione logistica - basso rischio', correct: false }
-            ];
+            question.textContent = interference.question;
 
             optionsDiv.innerHTML = '';
-            options.forEach(option => {
+            feedback.classList.remove('active', 'correct', 'wrong');
+            nextBtn.style.display = 'none';
+
+            interference.options.forEach((option, index) => {
                 const btn = document.createElement('button');
                 btn.className = 'option-btn';
                 btn.textContent = option.text;
-                btn.onclick = () => handleAnswer(option.correct);
+                btn.onclick = () => handleAnswer(option.correct, btn, interference);
                 optionsDiv.appendChild(btn);
             });
 
             modal.classList.add('active');
         }
 
-        function handleAnswer(isCorrect) {
-            const modal = document.getElementById('questionModal');
-            
+        function handleAnswer(isCorrect, btn, interference) {
+            const feedback = document.getElementById('feedback');
+            const nextBtn = document.getElementById('nextBtn');
+            const optionsDiv = document.getElementById('modalOptions');
+
+            // Disabilita tutti i pulsanti
+            optionsDiv.querySelectorAll('.option-btn').forEach(b => {
+                b.style.pointerEvents = 'none';
+                if (b === btn) {
+                    b.classList.add(isCorrect ? 'correct' : 'wrong');
+                }
+            });
+
+            // Mostra feedback
+            feedback.textContent = isCorrect ? interference.correctFeedback : interference.wrongFeedback;
+            feedback.classList.add('active', isCorrect ? 'correct' : 'wrong');
+
             if (isCorrect) {
-                // Risposta corretta
-                foundInterferences.add(currentCell.day);
-                currentCell.cells.forEach(cell => {
-                    cell.classList.add('clicked');
-                    cell.classList.remove('clickable');
-                });
-                updateScore();
-            } else {
-                // Risposta sbagliata
-                currentCell.cells.forEach(cell => {
-                    cell.classList.add('wrong');
-                    setTimeout(() => cell.classList.remove('wrong'), 500);
+                correctAnswers++;
+                answeredInterferences[interference.id] = true;
+                
+                // Marca le celle come answered
+                interference.companies.forEach(comp => {
+                    const cell = document.querySelector(`[data-interference="${interference.id}"][id^="cell-${comp}"]`);
+                    if (cell) cell.classList.add('answered');
                 });
             }
 
-            modal.classList.remove('active');
+            updateScore();
+            nextBtn.style.display = 'block';
+            nextBtn.onclick = closeModal;
+        }
+
+        function closeModal() {
+            document.getElementById('questionModal').classList.remove('active');
         }
 
         function updateScore() {
-            document.getElementById('foundCount').textContent = `${foundInterferences.size} / 6`;
-            document.getElementById('clickCount').textContent = clickCount;
+            document.getElementById('correctCount').textContent = `${correctAnswers} / 5`;
+            document.getElementById('score').textContent = correctAnswers * 20;
         }
 
         function showResults() {
             const resultsDiv = document.getElementById('results');
-            const found = foundInterferences.size;
-            const total = correctInterferences.length;
-            const percentage = Math.round((found / total) * 100);
+            const percentage = (correctAnswers / 5) * 100;
 
             let evaluation = '';
-            if (percentage >= 100) evaluation = '🏆 Eccellente! Tutte le interferenze identificate!';
-            else if (percentage >= 67) evaluation = '✅ Buon lavoro! Risultato sufficiente.';
-            else evaluation = '⚠️ Risultato insufficiente. Rivedi il materiale sul PSC.';
+            if (percentage === 100) evaluation = '🏆 Eccellente! Perfetta gestione delle interferenze!';
+            else if (percentage >= 80) evaluation = '✅ Ottimo! Buona competenza nel coordinamento.';
+            else if (percentage >= 60) evaluation = '👍 Sufficiente. Rivedi alcuni concetti del PSC.';
+            else evaluation = '⚠️ Insufficiente. Studia meglio l\'art. 92 e 96 D.Lgs. 81/2008.';
 
             let html = `
                 <div class="final-score">
-                    <h2>${found} / ${total}</h2>
+                    <h2>${correctAnswers} / 5</h2>
                     <p>${evaluation}</p>
+                    <p style="font-size: 16px; margin-top: 10px;">Punteggio: ${correctAnswers * 20}/100</p>
                 </div>
                 <h3>📊 Riepilogo Interferenze</h3>
             `;
 
-            correctInterferences.forEach(int => {
-                const wasFound = foundInterferences.has(int.day);
+            interferences.forEach(int => {
+                const wasCorrect = answeredInterferences[int.id];
                 html += `
-                    <div class="result-item ${wasFound ? 'found' : 'missed'}">
+                    <div class="result-item ${wasCorrect ? 'correct' : 'incorrect'}">
                         <div class="result-title">
-                            ${wasFound ? '✅' : '❌'} Giorno ${int.day} - ${int.companies.join(' + ')}
+                            ${wasCorrect ? '✅' : '❌'} Interferenza ${int.id} - Giorno ${int.day}
                         </div>
-                        <div class="result-desc">${int.reason}</div>
+                        <div class="result-desc">
+                            <strong>Imprese:</strong> ${int.companies.join(' + ')}<br>
+                            <strong>Contesto:</strong> ${int.context}<br>
+                            <strong>Tipo domanda:</strong> ${int.type === 'reason' ? 'Motivo interferenza' : 'Soluzione coordinamento'}
+                        </div>
                     </div>
                 `;
             });
 
             html += `
-                <p style="margin-top: 20px; color: #718096; font-size: 14px;">
-                    <strong>Nota didattica:</strong> Il coordinatore deve identificare tutte le interferenze 
-                    nel PSC e definire misure di coordinamento secondo l'art. 92 D.Lgs. 81/2008.
-                </p>
+                <div class="note">
+                    <strong>📚 Riferimenti normativi:</strong><br>
+                    • Art. 92 D.Lgs. 81/2008 - Obblighi del coordinatore per l'esecuzione<br>
+                    • Art. 96 D.Lgs. 81/2008 - Obblighi dei datori di lavoro e coordinamento<br>
+                    • Art. 97 - Obblighi dell'impresa affidataria<br>
+                    • Allegato XV - Contenuti minimi del PSC
+                </div>
             `;
 
             resultsDiv.innerHTML = html;
             resultsDiv.classList.add('active');
-
-            // Disabilita il pulsante
             document.getElementById('verifyBtn').disabled = true;
         }
 
         // Initialize
         generateTimeline();
-
         document.getElementById('verifyBtn').addEventListener('click', showResults);
 
         // Chiudi modal cliccando fuori
