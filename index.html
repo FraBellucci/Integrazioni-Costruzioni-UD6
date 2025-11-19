@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UD6 - Gestione Interferenze in Cantiere</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+            line-height: 1.5;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .instructions {
+            background: #f7fafc;
+            border-left: 4px solid #4299e1;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 4px;
+        }
+
+        .instructions h3 {
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .instructions p {
+            color: #4a5568;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .score-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #edf2f7;
+            padding: 15px 25px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+
+        .score-item {
+            text-align: center;
+        }
+
+        .score-label {
+            font-size: 13px;
+            color: #718096;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .score-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2d3748;
+            margin-top: 5px;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 25px;
+            padding: 15px;
+            background: #f7fafc;
+            border-radius: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-color {
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            border: 2px solid #e2e8f0;
+        }
+
+        .legend-text {
+            font-size: 14px;
+            color: #4a5568;
+            font-weight: 500;
+        }
+
+        .timeline {
+            overflow-x: auto;
+            margin-bottom: 30px;
+        }
+
+        .timeline-grid {
+            display: grid;
+            grid-template-columns: 150px repeat(20, 60px);
+            gap: 1px;
+            background: #cbd5e0;
+            border: 1px solid #cbd5e0;
+            min-width: 900px;
+        }
+
+        .cell {
+            background: white;
+            padding: 12px;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+        }
+
+        .cell.header-cell {
+            background: #2d3748;
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .cell.company-cell {
+            background: #edf2f7;
+            font-weight: 600;
+            color: #2d3748;
+            justify-content: flex-start;
+            padding-left: 15px;
+        }
+
+        .cell.work-cell {
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .cell.work-cell:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 10;
+        }
+
+        .cell.work-cell.clickable {
+            border: 2px dashed #f6ad55;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .cell.work-cell.clicked {
+            border: 3px solid #48bb78;
+            box-shadow: 0 0 0 3px rgba(72, 187, 120, 0.2);
+        }
+
+        .cell.work-cell.wrong {
+            border: 3px solid #f56565;
+            box-shadow: 0 0 0 3px rgba(245, 101, 101, 0.2);
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .company-a { background: #fc8181; }
+        .company-b { background: #63b3ed; }
+        .company-c { background: #68d391; }
+        .company-d { background: #f6ad55; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-content h3 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 22px;
+        }
+
+        .modal-content p {
+            color: #4a5568;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .option-btn {
+            padding: 15px 20px;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+            font-size: 15px;
+            color: #2d3748;
+        }
+
+        .option-btn:hover {
+            border-color: #4299e1;
+            background: #ebf8ff;
+            transform: translateX(5px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results {
+            display: none;
+            background: #f7fafc;
+            padding: 25px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .results h3 {
+            color: #2d3748;
+            margin-bottom: 20px;
+            font-size: 22px;
+        }
+
+        .result-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 6px;
+            border-left: 4px solid #cbd5e0;
+        }
+
+        .result-item.found {
+            border-left-color: #48bb78;
+        }
+
+        .result-item.missed {
+            border-left-color: #f56565;
+        }
+
+        .result-title {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+
+        .result-desc {
+            color: #718096;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .final-score {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .final-score h2 {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .final-score p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+
+        .verify-btn-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏗️ UD6 - Gestione Interferenze in Cantiere</h1>
+            <p>Identifica le sovrapposizioni pericolose tra le lavorazioni delle 4 imprese</p>
+        </div>
+
+        <div class="content">
+            <div class="instructions">
+                <h3>📋 Istruzioni</h3>
+                <p><strong>Scenario:</strong> Cantiere di ristrutturazione con 4 imprese che lavorano contemporaneamente.</p>
+                <p><strong>Obiettivo:</strong> Clicca sulle celle dove vedi sovrapposizioni tra lavorazioni che possono creare interferenze pericolose.</p>
+                <p><strong>Quando clicchi su una cella:</strong> dovrai rispondere perché quella è un'interferenza da gestire.</p>
+                <p><strong>Target minimo:</strong> Trova almeno 4 interferenze su 6 totali presenti nel cronoprogramma.</p>
+            </div>
+
+            <div class="score-panel">
+                <div class="score-item">
+                    <div class="score-label">Interferenze trovate</div>
+                    <div class="score-value" id="foundCount">0 / 6</div>
+                </div>
+                <div class="score-item">
+                    <div class="score-label">Click totali</div>
+                    <div class="score-value" id="clickCount">0</div>
+                </div>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color company-a"></div>
+                    <div class="legend-text">Impresa A - Demolizioni interne</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color company-b"></div>
+                    <div class="legend-text">Impresa B - Impianto elettrico</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color company-c"></div>
+                    <div class="legend-text">Impresa C - Opere murarie</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color company-d"></div>
+                    <div class="legend-text">Impresa D - Ponteggio esterno</div>
+                </div>
+            </div>
+
+            <div class="timeline">
+                <div class="timeline-grid" id="timelineGrid"></div>
+            </div>
+
+            <div class="verify-btn-container">
+                <button class="btn-primary" id="verifyBtn">Verifica Risultati</button>
+            </div>
+
+            <div class="results" id="results"></div>
+        </div>
+    </div>
+
+    <!-- Modal per domande -->
+    <div class="modal" id="questionModal">
+        <div class="modal-content">
+            <h3>Perché questa è un'interferenza?</h3>
+            <p id="modalQuestion"></p>
+            <div class="options" id="modalOptions"></div>
+        </div>
+    </div>
+
+    <script>
+        // Dati del cronoprogramma (20 giorni = 4 settimane)
+        const companies = [
+            { id: 'A', name: 'Impresa A - Demolizioni', days: [1,2,3,4,5,6,7,8,9,10], color: 'company-a' },
+            { id: 'B', name: 'Impresa B - Elettrico', days: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], color: 'company-b' },
+            { id: 'C', name: 'Impresa C - Murarie', days: [5,6,7,8,9,10,11,12,13,14], color: 'company-c' },
+            { id: 'D', name: 'Impresa D - Ponteggio', days: [1,2,3,16,17,18,19,20], color: 'company-d' }
+        ];
+
+        // Interferenze corrette (giorni dove c'è sovrapposizione pericolosa)
+        const correctInterferences = [
+            { 
+                day: 3, 
+                companies: ['A', 'B'], 
+                reason: 'Demolizioni sopra lavori elettrici - rischio caduta materiali',
+                correctAnswer: 'caduta'
+            },
+            { 
+                day: 2, 
+                companies: ['A', 'D'], 
+                reason: 'Demolizioni con ponteggio in uso - lavori in quota sovrapposti',
+                correctAnswer: 'stessaZona'
+            },
+            { 
+                day: 7, 
+                companies: ['B', 'C'], 
+                reason: 'Lavori elettrici e murari nella stessa area - rischio polveri su impianti',
+                correctAnswer: 'stessaZona'
+            },
+            { 
+                day: 9, 
+                companies: ['A', 'C'], 
+                reason: 'Demolizioni e murature contemporanee - interferenza su accessi',
+                correctAnswer: 'stessaZona'
+            },
+            { 
+                day: 10, 
+                companies: ['B', 'C'], 
+                reason: 'Elettrico e murarie - sovrapposizione spaziale critica',
+                correctAnswer: 'stessaZona'
+            },
+            { 
+                day: 6, 
+                companies: ['A', 'B', 'C'], 
+                reason: 'Tre imprese contemporanee - alta complessità coordinamento',
+                correctAnswer: 'stessaZona'
+            }
+        ];
+
+        let foundInterferences = new Set();
+        let clickCount = 0;
+        let currentCell = null;
+
+        // Genera la griglia del cronoprogramma
+        function generateTimeline() {
+            const grid = document.getElementById('timelineGrid');
+            
+            // Header row
+            grid.innerHTML = '<div class="cell header-cell">Impresa / Giorno</div>';
+            for (let day = 1; day <= 20; day++) {
+                grid.innerHTML += `<div class="cell header-cell">G${day}</div>`;
+            }
+
+            // Rows per ogni impresa
+            companies.forEach(company => {
+                grid.innerHTML += `<div class="cell company-cell">${company.name}</div>`;
+                
+                for (let day = 1; day <= 20; day++) {
+                    const isWorkDay = company.days.includes(day);
+                    const hasInterference = correctInterferences.some(
+                        int => int.day === day && int.companies.includes(company.id)
+                    );
+                    
+                    if (isWorkDay) {
+                        const classes = `cell work-cell ${company.color} ${hasInterference ? 'clickable' : ''}`;
+                        const cellId = `cell-${company.id}-${day}`;
+                        grid.innerHTML += `<div class="${classes}" data-company="${company.id}" data-day="${day}" id="${cellId}"></div>`;
+                    } else {
+                        grid.innerHTML += `<div class="cell"></div>`;
+                    }
+                }
+            });
+
+            // Aggiungi event listeners
+            document.querySelectorAll('.work-cell').forEach(cell => {
+                cell.addEventListener('click', handleCellClick);
+            });
+        }
+
+        function handleCellClick(e) {
+            const cell = e.target;
+            const day = parseInt(cell.dataset.day);
+            const company = cell.dataset.company;
+
+            // Verifica se è un'interferenza corretta
+            const interference = correctInterferences.find(
+                int => int.day === day && int.companies.includes(company)
+            );
+
+            if (!interference) {
+                // Click sbagliato
+                cell.classList.add('wrong');
+                setTimeout(() => cell.classList.remove('wrong'), 500);
+                return;
+            }
+
+            // Se già trovata, non fare nulla
+            if (foundInterferences.has(day)) {
+                return;
+            }
+
+            // Mostra modal con domanda
+            currentCell = { day, interference, cells: [] };
+            
+            // Trova tutte le celle di questa interferenza
+            interference.companies.forEach(comp => {
+                const cellEl = document.getElementById(`cell-${comp}-${day}`);
+                if (cellEl) currentCell.cells.push(cellEl);
+            });
+
+            showQuestionModal(interference);
+            clickCount++;
+            updateScore();
+        }
+
+        function showQuestionModal(interference) {
+            const modal = document.getElementById('questionModal');
+            const question = document.getElementById('modalQuestion');
+            const optionsDiv = document.getElementById('modalOptions');
+
+            question.textContent = `Giorno ${interference.day}: ${interference.companies.join(' + ')}`;
+
+            const options = [
+                { id: 'stessaZona', text: 'Stessa zona di lavoro, stesso momento temporale', correct: interference.correctAnswer === 'stessaZona' },
+                { id: 'caduta', text: 'Rischio caduta materiali dall\'alto', correct: interference.correctAnswer === 'caduta' },
+                { id: 'logistica', text: 'Solo questione logistica - basso rischio', correct: false }
+            ];
+
+            optionsDiv.innerHTML = '';
+            options.forEach(option => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.textContent = option.text;
+                btn.onclick = () => handleAnswer(option.correct);
+                optionsDiv.appendChild(btn);
+            });
+
+            modal.classList.add('active');
+        }
+
+        function handleAnswer(isCorrect) {
+            const modal = document.getElementById('questionModal');
+            
+            if (isCorrect) {
+                // Risposta corretta
+                foundInterferences.add(currentCell.day);
+                currentCell.cells.forEach(cell => {
+                    cell.classList.add('clicked');
+                    cell.classList.remove('clickable');
+                });
+                updateScore();
+            } else {
+                // Risposta sbagliata
+                currentCell.cells.forEach(cell => {
+                    cell.classList.add('wrong');
+                    setTimeout(() => cell.classList.remove('wrong'), 500);
+                });
+            }
+
+            modal.classList.remove('active');
+        }
+
+        function updateScore() {
+            document.getElementById('foundCount').textContent = `${foundInterferences.size} / 6`;
+            document.getElementById('clickCount').textContent = clickCount;
+        }
+
+        function showResults() {
+            const resultsDiv = document.getElementById('results');
+            const found = foundInterferences.size;
+            const total = correctInterferences.length;
+            const percentage = Math.round((found / total) * 100);
+
+            let evaluation = '';
+            if (percentage >= 100) evaluation = '🏆 Eccellente! Tutte le interferenze identificate!';
+            else if (percentage >= 67) evaluation = '✅ Buon lavoro! Risultato sufficiente.';
+            else evaluation = '⚠️ Risultato insufficiente. Rivedi il materiale sul PSC.';
+
+            let html = `
+                <div class="final-score">
+                    <h2>${found} / ${total}</h2>
+                    <p>${evaluation}</p>
+                </div>
+                <h3>📊 Riepilogo Interferenze</h3>
+            `;
+
+            correctInterferences.forEach(int => {
+                const wasFound = foundInterferences.has(int.day);
+                html += `
+                    <div class="result-item ${wasFound ? 'found' : 'missed'}">
+                        <div class="result-title">
+                            ${wasFound ? '✅' : '❌'} Giorno ${int.day} - ${int.companies.join(' + ')}
+                        </div>
+                        <div class="result-desc">${int.reason}</div>
+                    </div>
+                `;
+            });
+
+            html += `
+                <p style="margin-top: 20px; color: #718096; font-size: 14px;">
+                    <strong>Nota didattica:</strong> Il coordinatore deve identificare tutte le interferenze 
+                    nel PSC e definire misure di coordinamento secondo l'art. 92 D.Lgs. 81/2008.
+                </p>
+            `;
+
+            resultsDiv.innerHTML = html;
+            resultsDiv.classList.add('active');
+
+            // Disabilita il pulsante
+            document.getElementById('verifyBtn').disabled = true;
+        }
+
+        // Initialize
+        generateTimeline();
+
+        document.getElementById('verifyBtn').addEventListener('click', showResults);
+
+        // Chiudi modal cliccando fuori
+        document.getElementById('questionModal').addEventListener('click', (e) => {
+            if (e.target.id === 'questionModal') {
+                e.target.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html>
